@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.api_v1.api import api_router
 from app.core.config import settings
+from app.worker import celery_app
 
 # Create FastAPI app
 app = FastAPI(
@@ -38,3 +39,21 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.get("/celery-health")
+async def celery_health_check():
+    """Celery health check endpoint."""
+    try:
+        # Run a simple task to check if Celery is working
+        result = celery_app.send_task("app.worker.debug_task")
+        return {
+            "status": "healthy",
+            "task_id": result.id,
+            "message": "Celery task dispatched successfully",
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+        }

@@ -1,0 +1,27 @@
+FROM python:3.9-slim as requirements-stage
+
+WORKDIR /tmp
+
+RUN pip install poetry
+
+COPY ./pyproject.toml ./poetry.lock* /tmp/
+
+RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY --from=requirements-stage /tmp/requirements.txt /app/requirements.txt
+
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
+COPY . /app/
+
+# Create a non-root user and switch to it
+RUN adduser --disabled-password --gecos "" appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Run Flower
+CMD ["celery", "-A", "app.worker", "flower", "--port=5555", "--basic_auth=admin:admin"]

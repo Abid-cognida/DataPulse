@@ -35,6 +35,69 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: datapulse-backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=datapulse
+      - REDIS_SERVER=redis
+    networks:
+      - datapulse-network
+    volumes:
+      - ./backend:/app
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.celery
+    container_name: datapulse-celery-worker
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=datapulse
+      - REDIS_SERVER=redis
+    networks:
+      - datapulse-network
+    volumes:
+      - ./backend:/app
+
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.flower
+    container_name: datapulse-flower
+    ports:
+      - "5555:5555"
+    depends_on:
+      - postgres
+      - redis
+      - celery-worker
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=datapulse
+      - REDIS_SERVER=redis
+    networks:
+      - datapulse-network
+    volumes:
+      - ./backend:/app
+
 networks:
   datapulse-network:
     driver: bridge
